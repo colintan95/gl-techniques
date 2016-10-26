@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>06 - Environment Mapping</title>
+        
+        <style type="text/css">
+            body {
+                background-color: #000000;
+                color: #FFFFFF;
+                margin: 0;
+                padding: 0;
+            }
+            
+            #canvas-cont {
+                position: relative;
+                width: 640px;
+                height: 480px;
+                margin: 0 auto;
+            }
+            
+            #gl-canvas {
+                border: 1px solid #FFFFFF;
+            }
+            
+            #load-canvas {
+                position: absolute;
+                top: 0px;
+                left: 0px;
+                border: 1px solid #FFFFFF;
+            }
+            
+            a {
+                text-align: center;
+                color: #FFFFFF;
+            }
+            
+            h1 {
+                text-align: center;
+                color: #FFFFFF;
+                margin: 0;
+            }
+            
+            #index-link {
+                position: relative;
+                text-align: center;
+                margin: 20px auto 0;  
+            }
+            
+            #main {
+                position: relative;
+                width: 800px;
+                height: 600px;
+                margin: 0 auto;
+                padding: 0;
+            }
+            
+            #heading {
+                width: 800px;
+                height: 50px;
+                margin: 30px auto 0;
+            }
+            
+        </style>
+        
+        <script type="application/javascript" src="../../shared/gl-matrix/gl-matrix.js"></script> 
+        <script type="application/javascript" src="../../shared/loader.js"></script>
+        <script type="application/javascript" src="../../shared/image-loader.js"></script>
+        <script type="application/javascript" src="../../shared/model.js"></script>
+        <script type="application/javascript" src="gl.js"></script>
+        <script type="x-shader/x-vertex" id="shader-vert">
+            attribute vec4 vPosition;
+            attribute vec3 vNormal;
+
+            varying vec3 vfViewPos;
+            varying vec3 vfViewNorm;
+
+            uniform mat4 uModelMat;
+            uniform mat4 uViewMat;
+            uniform mat4 uProjMat;
+            uniform mat3 uNormMat;
+            
+            uniform vec4 uLightPos;
+
+            void main() {
+                
+                vfViewPos = (uViewMat * uModelMat * vPosition).xyz;
+                
+                gl_Position = uProjMat * uViewMat * uModelMat * vPosition;
+                
+                vfViewNorm = uNormMat * vNormal;
+            }
+            
+        </script>
+        <script type="x-shader/x-fragment" id="shader-frag">
+            precision highp float;
+        
+            varying vec3 vfViewPos;
+            varying vec3 vfViewNorm;
+
+            uniform samplerCube uTexture; 
+            
+            uniform mat3 uInverseViewMat;
+        
+            void main() {
+                vec3 texcoord = uInverseViewMat * reflect(vfViewPos, normalize(vfViewNorm));
+                
+                gl_FragColor = vec4(0.3, 0.2, 0.1, 1.0) + vec4(0.97, 0.83, 0.79, 0.0) * textureCube(uTexture, texcoord);
+            }
+
+        </script>
+        <script type="x-shader/x-vertex" id="cubemap-vert">
+            attribute vec4 vPosition;
+
+            varying vec3 vfTexcoord;
+
+            uniform mat4 uModelMat;
+            uniform mat4 uViewMat;
+            uniform mat4 uProjMat;
+
+            void main() {
+                
+                vfTexcoord = vPosition.xyz;
+                
+                gl_Position = uProjMat * uViewMat * uModelMat * vPosition;
+            }
+        </script>
+        <script type="x-shader/x-fragment" id="cubemap-frag">
+            precision highp float;
+        
+            varying vec3 vfTexcoord;
+            
+            uniform samplerCube uTexture; 
+        
+            void main() {
+                gl_FragColor = textureCube(uTexture, vfTexcoord);
+            }
+        </script>
+    </head>
+    <body onload="init()">
+        <div id="main">
+            <div id="heading"><h1>06 - Environment Mapping</h1></div>
+            <div id="canvas-cont">
+                <canvas id="gl-canvas" width="640" height="480">
+                    Your browser does not support HTML 5 canvas element.
+                </canvas>
+                <canvas id="load-canvas" width="640" height="480">
+
+                </canvas>
+            </div>
+            
+            <div id="index-link">
+                <p>*Program may take a few seconds to load</p>
+                <a href="../../index.html">Back to Index</a>
+            </div>
+        </div>
+    </body>
+</html>

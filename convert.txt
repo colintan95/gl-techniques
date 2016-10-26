@@ -1,0 +1,12 @@
+Ranking of projects to convert to WebGL:
+
+01 - 03) Lighting (Done)
+02 - 20) Particle Reuse (Done)
+03 - 11) Shadow Mapping (Done)
+18) Sine Wave (Done)
+13) Projective Texture Mapping (Done)
+05) Environment Mapping (Done)
+15) Gaussian Filter
+14) Edge Detection
+12) Toon Shading
+01) Instancing

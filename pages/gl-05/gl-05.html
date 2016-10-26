@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>05 - Projective Texture Mapping</title>
+        
+        <style type="text/css">
+            body {
+                background-color: #000000;
+                color: #FFFFFF;
+                margin: 0;
+                padding: 0;
+            }
+            
+            #canvas-cont {
+                position: relative;
+                width: 640px;
+                height: 480px;
+                margin: 0 auto;
+            }
+            
+            #gl-canvas {
+                border: 1px solid #FFFFFF;
+            }
+            
+            #load-canvas {
+                position: absolute;
+                top: 0px;
+                left: 0px;
+                border: 1px solid #FFFFFF;
+            }
+            
+            a {
+                text-align: center;
+                color: #FFFFFF;
+            }
+            
+            h1 {
+                text-align: center;
+                color: #FFFFFF;
+                margin: 0;
+            }
+            
+            #index-link {
+                position: relative;
+                text-align: center;
+                margin: 20px auto 0;  
+            }
+            
+            #main {
+                position: relative;
+                width: 800px;
+                height: 600px;
+                margin: 0 auto;
+                padding: 0;
+            }
+            
+            #heading {
+                width: 800px;
+                height: 50px;
+                margin: 30px auto 0;
+            }
+            
+        </style>
+        
+        <script type="application/javascript" src="../../shared/gl-matrix/gl-matrix.js"></script> 
+        <script type="application/javascript" src="../../shared/loader.js"></script>
+        <script type="application/javascript" src="../../shared/image-loader.js"></script>
+        <script type="application/javascript" src="../../shared/model.js"></script>
+        <script type="application/javascript" src="gl.js"></script>
+        <script type="x-shader/x-vertex" id="shader-vert">
+            attribute vec4 vPosition;
+            attribute vec2 vTexcoord;
+            attribute vec3 vNormal;
+
+            varying vec2 vfTexcoord;
+            varying vec3 vfNormal;
+            varying vec4 vfEyePos;
+            varying vec4 vfLightPos;
+            varying vec3 vfConeDirection;
+            varying vec4 vfShadowCoord;
+            varying vec4 vfProjectorTexcoord;
+
+            uniform mat4 uModelMat;
+            uniform mat4 uViewMat;
+            uniform mat4 uProjMat;
+            uniform mat3 uModelViewNormMat;
+
+            uniform mat3 uViewNormMat;
+            uniform vec3 uLightPos;
+            uniform vec3 uConeDirection;
+            
+            uniform mat4 uScaleBiasMat;
+            uniform mat4 uShadowMat;
+            
+            uniform mat4 uProjectorMat;
+
+            void main() {
+                
+                vfNormal = uModelViewNormMat * vNormal;
+
+                vfTexcoord = vTexcoord;
+            
+                vfEyePos = uViewMat * uModelMat * vPosition;
+                
+                gl_Position = uProjMat * uViewMat * uModelMat * vPosition;
+
+                vfLightPos = uViewMat * vec4(uLightPos, 1.0);
+                
+                vfConeDirection = uViewNormMat * uConeDirection;
+                
+                vfShadowCoord = uScaleBiasMat * uShadowMat * uModelMat * vPosition;
+                
+                vfProjectorTexcoord = uScaleBiasMat * uProjectorMat * uModelMat * vPosition;
+            }
+            
+        </script>
+        <script type="x-shader/x-fragment" id="shader-frag">
+            precision highp float;
+        
+            varying vec2 vfTexcoord;
+            varying vec4 vfEyePos;
+            varying vec3 vfNormal;
+            varying vec4 vfLightPos;
+            varying vec3 vfConeDirection;
+            varying vec4 vfShadowCoord;
+            varying vec4 vfProjectorTexcoord;
+            
+            uniform sampler2D uTexSampler;
+            uniform bool uIsTextured;
+            uniform vec3 uObjColor;
+
+            uniform vec3 uAmbient;
+            uniform vec3 uDiffuse;
+            uniform vec3 uSpecular;
+            uniform float uShininess;
+            uniform float uSpecStrength;
+
+            uniform float uConstAttenuation;
+            uniform float uLinearAttenuation;
+            uniform float uConeAngle;
+            uniform float uSpotExponent;
+            
+            uniform sampler2D uDepthTexture;
+            uniform sampler2D uProjectorTexture;
+            uniform sampler2D uProjectorDepthTexture;
+            
+            float unpack(vec4 depthVec) {
+                vec4 bitShift = vec4(1.0 / (256.0 * 256.0 * 256.0), 1.0 / (256.0 * 256.0), 1.0 / 256.0, 1.0);
+                return dot(depthVec, bitShift);
+            }
+
+            void main() {
+                float spec = 0.0;
+
+                vec3 baseColor;
+
+                if (uIsTextured) {
+                    baseColor = texture2D(uTexSampler, vfTexcoord).rgb;
+                }
+                else {
+                    baseColor = uObjColor;
+                }
+                
+                vec3 projCoord = vfProjectorTexcoord.xyz / vfProjectorTexcoord.w;
+                vec4 projDepthVec = texture2D(uProjectorDepthTexture, projCoord.xy);
+                float projDepthRef = unpack(projDepthVec);
+                float projDepth = projCoord.z;
+  
+                if (projDepth <= (projDepthRef + 0.005) && projCoord.x >= 0.0 && projCoord.x <= 1.0 && projCoord.y >= 0.0 && projCoord.y <= 1.0) {
+                    baseColor += texture2D(uProjectorTexture, projCoord.xy).rgb;
+                }
+                
+                vec3 shadowCoord = (vfShadowCoord.xyz / vfShadowCoord.w);
+                vec4 depthVec = texture2D(uDepthTexture, shadowCoord.xy);
+                
+                float depthRef = unpack(depthVec);
+                float depth = shadowCoord.z;
+                
+                float shadow = 1.0;
+                
+                if (depth > depthRef + 0.0005) {
+                    shadow = 0.0;
+                }
+                
+                vec3 lightDirection = (vfLightPos - vfEyePos).xyz;
+                float lightDistance = length(lightDirection);
+                
+                vec3 lightUnit = normalize(lightDirection);
+                vec3 normUnit = normalize(vfNormal);
+                vec3 eyeUnit = normalize(-vfEyePos.xyz);
+                
+                vec3 coneUnit = -normalize(vfConeDirection);
+                float coneDot = dot(lightUnit, coneUnit);
+                
+                float lightAttenuation = 0.0;
+                
+                if (coneDot >= uConeAngle) {
+                    lightAttenuation = 1.0 / (uConstAttenuation + uLinearAttenuation * lightDistance);
+                    lightAttenuation *= pow(coneDot, uSpotExponent);
+                }
+
+                float intensity = max(dot(normUnit, lightUnit), 0.0);
+
+                if (intensity > 0.0) {
+                    vec3 h = normalize(lightUnit + eyeUnit);
+
+                    float dotSpec = max(dot(h,normUnit), 0.0);
+                    spec = pow(dotSpec, uShininess);
+                }
+
+                vec3 color = uAmbient * baseColor + shadow * lightAttenuation * (intensity * uDiffuse + spec * uSpecular * uSpecStrength);
+
+                gl_FragColor = vec4(color, 1.0);
+            }
+
+        </script>
+        <script type="x-shader/x-vertex" id="shadow-vs">
+            attribute vec4 vPosition;
+            
+            uniform mat4 uModelMat;
+            uniform mat4 uViewMat;
+            uniform mat4 uProjMat;
+            
+            void main() {
+                gl_Position = uProjMat * uViewMat * uModelMat * vPosition;
+            }
+        </script>
+        <script type="x-shader/x-fragment" id="shadow-fs">
+            precision highp float;
+        
+            void main() {
+                vec4 bitShift = vec4((256.0 * 256.0 * 256.0), (256.0 * 256.0), 256.0, 1.0);
+                vec4 bitMask = vec4(0.0, 1.0 / 256.0, 1.0 / 256.0, 1.0 / 256.0);
+                vec4 rgbaDepth = fract(gl_FragCoord.z * bitShift);
+                rgbaDepth -= rgbaDepth.xxyz * bitMask;
+            
+                gl_FragColor = rgbaDepth;
+            }
+        </script>
+    </head>
+    <body onload="init()">
+        <div id="main">
+            <div id="heading"><h1>05 - Projective Texture Mapping</h1></div>
+            <div id="canvas-cont">
+                <canvas id="gl-canvas" width="640" height="480">
+                    Your browser does not support HTML 5 canvas element.
+                </canvas>
+                <canvas id="load-canvas" width="640" height="480">
+
+                </canvas>
+            </div>
+            <div id="index-link">
+                <a href="../../index.html">Back to Index</a>
+            </div>
+        </div>
+    </body>
+</html>

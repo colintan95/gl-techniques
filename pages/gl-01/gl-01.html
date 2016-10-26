@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>01 - Lighting</title>
+        
+        <style type="text/css">
+            body {
+                background-color: #000000;
+                color: #FFFFFF;
+                margin: 0;
+                padding: 0;
+            }
+            
+            #canvas-cont {
+                position: relative;
+                width: 640px;
+                height: 480px;
+                margin: 0 auto;
+            }
+            
+            #gl-canvas {
+                border: 1px solid #FFFFFF;
+            }
+            
+            #load-canvas {
+                position: absolute;
+                top: 0px;
+                left: 0px;
+                border: 1px solid #FFFFFF;
+            }
+            
+            a {
+                text-align: center;
+                color: #FFFFFF;
+            }
+            
+            h1 {
+                text-align: center;
+                color: #FFFFFF;
+                margin: 0;
+            }
+            
+            #index-link {
+                position: relative;
+                text-align: center;
+                margin: 20px auto 0;  
+            }
+            
+            #main {
+                position: relative;
+                width: 800px;
+                height: 600px;
+                margin: 0 auto;
+                padding: 0;
+            }
+            
+            #heading {
+                width: 800px;
+                height: 50px;
+                margin: 30px auto 0;
+            }
+            
+        </style>
+        
+        <script type="application/javascript" src="../../shared/gl-matrix/gl-matrix.js"></script> 
+        <script type="application/javascript" src="../../shared/loader.js"></script>
+        <script type="application/javascript" src="../../shared/image-loader.js"></script>
+        <script type="application/javascript" src="../../shared/model.js"></script>
+        <script type="application/javascript" src="gl.js"></script>
+        <script type="x-shader/x-vertex" id="shader-vert">            
+            attribute vec4 vPosition;
+            attribute vec2 vTexcoord;
+            attribute vec3 vNormal;
+            
+            varying vec2 vfTexcoord;
+            varying vec3 vfNormal;
+            varying vec4 vfEyePos;
+            varying vec4 vfLightPos;
+
+            uniform mat4 uModelMat;
+            uniform mat4 uViewMat;
+            uniform mat4 uProjMat;
+            uniform mat3 uNormMat;
+    
+            uniform vec4 uLightPos;
+            
+            void main() {
+                vfEyePos = uViewMat * uModelMat * vPosition;
+                
+                vfLightPos = uViewMat * uLightPos;
+            
+                gl_Position = uProjMat * uViewMat * uModelMat * vPosition;
+
+                vfNormal = uNormMat * vNormal;
+                
+                vfTexcoord = vTexcoord;
+            }
+        </script>
+        <script type="x-shader/x-fragment" id="shader-frag">
+            precision highp float;
+        
+            varying vec2 vfTexcoord;
+            varying vec4 vfEyePos;
+            varying vec3 vfNormal;
+            varying vec4 vfLightPos;
+            
+            uniform sampler2D uTexSampler;
+            
+            uniform vec4 uAmbient;
+            uniform vec4 uDiffuse;
+            uniform vec4 uSpecular;
+            uniform float uShininess;
+
+            void main() {
+                float spec = 0.0;
+
+                vec3 light = normalize((vfLightPos - vfEyePos).xyz);
+                vec3 norm = normalize(vfNormal);
+                vec3 eye = normalize(-vfEyePos.xyz);
+
+                float intensity = max(dot(norm, light), 0.0);
+
+                if (intensity > 0.0) {
+                    vec3 h = normalize(light + eye);
+
+                    float dotSpec = max(dot(h,norm), 0.0);
+                    spec = pow(dotSpec, uShininess);
+                }
+
+                gl_FragColor = spec * uSpecular + uAmbient * texture2D(uTexSampler, vfTexcoord) + intensity * uDiffuse;
+            }
+        </script>
+    </head>
+    <body onload="init()">
+        <div id="main">
+            <div id="heading"><h1>01 - Lighting</h1></div>
+            <div id="canvas-cont">
+                <canvas id="gl-canvas" width="640" height="480">
+                    Your browser does not support HTML 5 canvas element.
+                </canvas>
+                <canvas id="load-canvas" width="640" height="480">
+
+                </canvas>
+            </div>
+            <div id="index-link">
+                <a href="../../index.html">Back to Index</a>
+            </div>
+        </div>
+    </body>
+</html>

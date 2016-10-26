@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>02 - Particle System</title>
+        
+        <style type="text/css">
+            body {
+                background-color: #000000;
+                color: #FFFFFF;
+                margin: 0;
+                padding: 0;
+            }
+            
+            #canvas-cont {
+                position: relative;
+                width: 640px;
+                height: 480px;
+                margin: 0 auto;
+            }
+            
+            #gl-canvas {
+                border: 1px solid #FFFFFF;
+            }
+            
+            #load-canvas {
+                position: absolute;
+                top: 0px;
+                left: 0px;
+                border: 1px solid #FFFFFF;
+            }
+            
+            a {
+                text-align: center;
+                color: #FFFFFF;
+            }
+            
+            h1 {
+                text-align: center;
+                color: #FFFFFF;
+                margin: 0;
+            }
+            
+            #index-link {
+                position: relative;
+                text-align: center;
+                margin: 20px auto 0;  
+            }
+            
+            #main {
+                position: relative;
+                width: 800px;
+                height: 600px;
+                margin: 0 auto;
+                padding: 0;
+            }
+            
+            #heading {
+                width: 800px;
+                height: 50px;
+                margin: 30px auto 0;
+            }
+            
+        </style>
+        
+        <script type="application/javascript" src="../../shared/gl-matrix/gl-matrix.js"></script> 
+        <script type="application/javascript" src="../../shared/loader.js"></script>
+        <script type="application/javascript" src="../../shared/image-loader.js"></script>
+        <script type="application/javascript" src="../../shared/model.js"></script>
+        <script type="application/javascript" src="gl.js"></script>
+        <script type="x-shader/x-vertex" id="shader-vert">            
+            attribute vec3 vPosition;
+            attribute float vAge;
+            
+            varying float vfAlpha;
+
+            uniform mat4 uModelMat;
+            uniform mat4 uViewMat;
+            uniform mat4 uProjMat;
+            
+            uniform float uLifetime;
+            uniform float uMinParticleSize;
+            uniform float uMaxParticleSize;
+            
+            void main() {
+                vfAlpha = 1.0 - vAge / uLifetime;
+                gl_PointSize = mix(uMinParticleSize, uMaxParticleSize, vAge / uLifetime);
+                gl_Position = uProjMat * uViewMat * uModelMat * vec4(vPosition, 1.0);
+            }
+        </script>
+        <script type="x-shader/x-fragment" id="shader-frag">
+            precision highp float;
+        
+            varying float vfAlpha;
+            
+            uniform sampler2D uTexture;
+
+            void main() {
+                vec4 color = texture2D(uTexture, gl_PointCoord);
+                color.a *= vfAlpha;
+                
+                gl_FragColor = color;
+            }
+        </script>
+    </head>
+    <body onload="init()">
+        <div id="main">
+            <div id="heading"><h1>02 - Particle System</h1></div>
+            <div id="canvas-cont">
+                <canvas id="gl-canvas" width="640" height="480">
+                    Your browser does not support HTML 5 canvas element.
+                </canvas>
+                <canvas id="load-canvas" width="640" height="480">
+
+                </canvas>
+            </div>
+            <div id="index-link">
+                <a href="../../index.html">Back to Index</a>
+            </div>
+        </div>
+    </body>
+</html>
